@@ -46,14 +46,10 @@ function updateASeries(aSeries) {
         .next()
         .then(result => {
           if (!result) {
-            return seriesCollection.insertOne(aSeries)
-              .then(inserted => inserted)
-              .catch(err => err);
+            return seriesCollection.insertOne(aSeries);
           }
           const id = new ObjectId(result._id);
-          return seriesCollection.updateOne({ _id: id }, aSeries)
-            .then(updated => updated)
-            .catch(err => err);
+          return seriesCollection.updateOne({ _id: id }, aSeries);
         })
         .catch(err => err);
     })
@@ -66,16 +62,13 @@ function crawlSeries() {
       const series = seriesResponse.data.results;
       const promises = [];
 
-      for (let index = 0; index < series.length; index++) {
-        const aSeries = series[index];
+      series.map(aSeries => {
         aSeries.marvelId = aSeries.id;
         delete aSeries.id;
-        promises.push(updateASeries(aSeries));
-      }
+        return promises.push(updateASeries(aSeries));
+      });
 
-      return Promise.all(promises)
-        .then(result => result)
-        .catch(err => err);
+      return Promise.all(promises);
     })
     .catch(err => err);
 }

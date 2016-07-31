@@ -61,7 +61,7 @@ function updateASeries(aSeries) {
 }
 
 function crawlSeries() {
-  return marvel.getSeries()
+  return marvel.getResource('series', { limit: 100 })
     .then(seriesResponse => {
       const series = seriesResponse.data.results;
 

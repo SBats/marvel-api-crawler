@@ -19,7 +19,7 @@ module.exports.MarvelService = class MarvelService {
     return instance;
   }
 
-  getSeries(options) {
+  getResource(resource, options) {
     const ts = Date.now();
     const hash = md5(`${ts}${this.privateKey}${this.publicKey}`);
     const credentials = `ts=${ts}&apikey=${this.publicKey}&hash=${hash}`;
@@ -29,7 +29,7 @@ module.exports.MarvelService = class MarvelService {
     for (let i = 0; i < optionsKeys.length; i++) {
       parameters.push(`${optionsKeys[i]}=${options[optionsKeys[i]]}`);
     }
-    url = `${this.baseUrl}series?${credentials}`;
+    url = `${this.baseUrl}${resource}?${credentials}`;
     if (optionsKeys.length > 0) url += `&${parameters.join('&')}`;
 
     return fetch(url)

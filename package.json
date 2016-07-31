@@ -1,0 +1,25 @@
+{
+  "name": "marvel-api-crawler",
+  "version": "1.0.0",
+  "description": "A node based crawler to retrieve data from Marvel api",
+  "main": "src/index.js",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SBats/marvel-api-crawler.git"
+  },
+  "keywords": [
+    "marvel",
+    "api",
+    "crawler",
+    "parser",
+    "node"
+  ],
+  "author": "SBats",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/SBats/marvel-api-crawler/issues"
+  },
+  "homepage": "https://github.com/SBats/marvel-api-crawler#readme"
+}

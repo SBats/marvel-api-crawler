@@ -1,2 +1,2 @@
 # marvel-api-crawler
-A node based crawler to retrieve data from marvel api
+A Node based crawler to retrieve data from Marvel api

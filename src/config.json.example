@@ -1,5 +1,12 @@
 {
   "dbUrl": "mongodb://@localhost:27017/myBase",
+  "endpoints": [
+    "series",
+    "comics",
+    "events",
+    "characters",
+    "creators"
+  ],
   "publicKey": "",
   "privateKey": ""
 }

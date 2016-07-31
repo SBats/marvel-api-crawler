@@ -38,34 +38,34 @@ function getDB() {
   return connectDB(dbUrl);
 }
 
-function updateASeries(aSeries) {
+function updateResource(type, resource) {
   return getDB()
     .then(db => {
-      const seriesCollection = db.collection('series');
-      return seriesCollection.find({ marvelId: aSeries.marvelId }).limit(1)
+      const resourceCollection = db.collection(type);
+      return resourceCollection.find({ marvelId: resource.marvelId }).limit(1)
         .next()
         .then(result => {
           if (!result) {
-            return seriesCollection.insertOne(aSeries);
+            return resourceCollection.insertOne(resource);
           }
           const id = new ObjectId(result._id);
-          return seriesCollection.updateOne({ _id: id }, aSeries);
+          return resourceCollection.updateOne({ _id: id }, resource);
         })
         .catch(err => err);
     })
     .catch(err => err);
 }
 
-function crawlSeries() {
-  return marvel.getResource('series', { limit: 100 })
-    .then(seriesResponse => {
-      const series = seriesResponse.data.results;
+function crawlResourceByType(type) {
+  return marvel.getResource(type, { limit: 100 })
+    .then(response => {
+      const resources = response.data.results;
       const promises = [];
 
-      series.map(aSeries => {
-        aSeries.marvelId = aSeries.id;
-        delete aSeries.id;
-        return promises.push(updateASeries(aSeries));
+      resources.map(resource => {
+        resource.marvelId = resource.id;
+        delete resource.id;
+        return promises.push(updateResource(type, resource));
       });
 
       return Promise.all(promises);
@@ -73,7 +73,18 @@ function crawlSeries() {
     .catch(err => err);
 }
 
-crawlSeries()
+function crawlAPI() {
+  const promises = [];
+  const endpoints = config.endpoints;
+
+  for (let i = 0; i < endpoints.length; i++) {
+    promises.push(crawlResourceByType(endpoints[i]));
+  }
+
+  return Promise.all(promises);
+}
+
+crawlAPI()
   .then(() => {
     closeDB();
     console.log('updated successfuly database');

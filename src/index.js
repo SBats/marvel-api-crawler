@@ -42,7 +42,7 @@ function updateASeries(aSeries) {
   return getDB()
     .then(db => {
       const seriesCollection = db.collection('series');
-      seriesCollection.find({ marvelId: aSeries.marvelId }).limit(1)
+      return seriesCollection.find({ marvelId: aSeries.marvelId }).limit(1)
         .next()
         .then(result => {
           if (!result) {
@@ -64,15 +64,18 @@ function crawlSeries() {
   return marvel.getResource('series', { limit: 100 })
     .then(seriesResponse => {
       const series = seriesResponse.data.results;
+      const promises = [];
 
       for (let index = 0; index < series.length; index++) {
         const aSeries = series[index];
         aSeries.marvelId = aSeries.id;
         delete aSeries.id;
-        updateASeries(aSeries);
+        promises.push(updateASeries(aSeries));
       }
 
-      return series;
+      return Promise.all(promises)
+        .then(result => result)
+        .catch(err => err);
     })
     .catch(err => err);
 }

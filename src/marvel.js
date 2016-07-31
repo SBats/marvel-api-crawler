@@ -24,7 +24,7 @@ module.exports.MarvelService = class MarvelService {
     const hash = md5(`${ts}${this.privateKey}${this.publicKey}`);
     const credentials = `ts=${ts}&apikey=${this.publicKey}&hash=${hash}`;
     const parameters = [];
-    const optionsKeys = Object.keys(options);
+    const optionsKeys = options ? Object.keys(options) : [];
     let url = '';
     for (let i = 0; i < optionsKeys.length; i++) {
       parameters.push(`${optionsKeys[i]}=${options[optionsKeys[i]]}`);

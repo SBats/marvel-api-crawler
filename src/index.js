@@ -1,11 +1,11 @@
 'use strict';
 
-
+const config = require('./config.json');
 const MongoClient = require('mongodb').MongoClient;
 const MarvelService = require('./marvel.js').MarvelService;
 // const ObjectId = require('mongodb').ObjectId;
 
-const dbUrl = 'mongodb://@localhost:27017/mrs';
+const dbUrl = config.dbUrl;
 let dbInstace = null;
 const marvel = new MarvelService();
 

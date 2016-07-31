@@ -4,6 +4,9 @@
   "description": "A node based crawler to retrieve data from Marvel api",
   "main": "src/index.js",
   "scripts": {
+    "init": "cp src/config.json.example src/config.json",
+    "postinstall": "npm run init",
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",

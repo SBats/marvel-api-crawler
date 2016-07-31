@@ -31,7 +31,7 @@ module.exports.MarvelService = class MarvelService {
     }
     url = `${this.baseUrl}series?${credentials}`;
     if (optionsKeys.length > 0) url += `&${parameters.join('&')}`;
-    console.log(url);
+
     return fetch(url)
       .then(res => res.json())
       .catch(err => err);

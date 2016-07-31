@@ -56,19 +56,48 @@ function updateResource(type, resource) {
     .catch(err => err);
 }
 
-function crawlResourceByType(type) {
-  return marvel.getResource(type, { limit: 100 })
+function getCrawlingResults(type, options) {
+  return marvel.getResource(type, options)
     .then(response => {
-      const resources = response.data.results;
+      const data = response.data;
       const promises = [];
 
-      resources.map(resource => {
+      data.results.map(resource => {
         resource.marvelId = resource.id;
         delete resource.id;
         return promises.push(updateResource(type, resource));
       });
 
-      return Promise.all(promises);
+      return {
+        total: data.total,
+        promises,
+      };
+    })
+    .catch(err => err);
+}
+
+function crawlResourceByType(type) {
+  const loadPromises = [];
+  let updatePromises = [];
+
+  return getCrawlingResults(type, { limit: 100 })
+    .then(results => {
+      const loadingIterations = Math.ceil(results.total / 100);
+      updatePromises = updatePromises.concat(results.promises);
+
+      for (let i = 0; i < loadingIterations; i++) {
+        loadPromises.push(
+          getCrawlingResults(type, { limit: 100, offset: 100 * (i + 1) })
+            .then(subResults => {
+              updatePromises = updatePromises.concat(subResults.promises);
+            })
+            .catch(err => err)
+        );
+      }
+
+      return Promise.all(loadPromises)
+        .then(() => Promise.all(updatePromises))
+        .catch(err => err);
     })
     .catch(err => err);
 }

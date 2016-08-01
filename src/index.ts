@@ -1,128 +1,123 @@
 'use strict';
 
 import MarvelService from './marvel';
+import DBManager from './database';
 
 const config = require('./config.json');
-const MongoClient = require('mongodb').MongoClient;
-const ObjectId = require('mongodb').ObjectId;
 
-const dbUrl: string = config.dbUrl;
-let dbInstace: any = null;
-const marvel: MarvelService = new MarvelService();
+class MarvelAPICrawler {
+  marvel: MarvelService;
+  dbManager: DBManager;
 
-function connectDB(url: string): Promise<any> {
-  return MongoClient.connect(url)
-    .then((datab: IDBDatabase) => {
-      dbInstace = datab;
-      return dbInstace;
-    })
-    .catch((err: Error) => `Couldn't connect to databse: ${err}`);
-}
+  constructor() {
+    this.marvel = new MarvelService();
+    this.dbManager = new DBManager();
+  }
 
-function closeDB(): Promise<any> {
-  if (dbInstace) {
-    return dbInstace.close()
+  start(): Promise<any> {
+    return this.dbManager.connectDB(config.dbUrl)
       .then(() => {
-        dbInstace = null;
+        return this.crawlAPI()
+          .then(() => {
+            console.log('updated successfuly database');
+            this.dbManager.logDBOperations();
+            return this.dbManager.db.close();
+          })
+          .catch((err: Error) => {
+            console.error(`Error while updating database: ${err}`);
+            this.dbManager.logDBOperations();
+            return this.dbManager.db.close();
+          });
       })
-      .catch((err: Error) => `Couldn't close databse connection: ${err}`);
+      .catch(err => err);
   }
 
-  return Promise.reject('Database connection already closed');
-}
+  crawlAPI(): Promise<any> {
+    const promises: Promise<any>[] = [];
+    const endpoints: string[] = config.endpoints;
 
-function getDB(): Promise<any> {
-  if (dbInstace) {
-    return Promise.resolve(dbInstace);
+    for (let i = 0; i < endpoints.length; i++) {
+      promises.push(
+        this.crawlResourceByType(endpoints[i])
+          .then(resources => {
+            console.log(`${resources.length} resources from ${endpoints[i]} to fetch`);
+            return this.updateDb(endpoints[i], resources)
+          })
+          .catch(err => err)
+      );
+    }
+
+    return Promise.all(promises)
+      .then(res => res)
+      .catch(err => err);
   }
 
-  return connectDB(dbUrl);
-}
-
-function updateResource(type: string, resource: any): Promise<any> {
-  return getDB()
-    .then(db => {
-      const resourceCollection = db.collection(type);
-      return resourceCollection.find({ marvelId: resource.marvelId }).limit(1)
-        .next()
-        .then((result: any) => {
-          if (!result) {
-            return resourceCollection.insertOne(resource);
-          }
-          const id = new ObjectId(result._id);
-          return resourceCollection.updateOne({ _id: id }, resource);
-        })
-        .catch((err: Error) => err);
-    })
-    .catch(err => err);
-}
-
-function getCrawlingResults(type: string, options: any): Promise<any> {
-  return marvel.getResource(type, options)
-    .then(response => {
-      const data = response.data;
-      const promises: Promise<any>[] = [];
-
-      data.results.map((resource: any) => {
-        resource.marvelId = resource.id;
-        delete resource.id;
-        return promises.push(updateResource(type, resource));
-      });
-
-      return {
-        total: data.total,
-        promises,
-      };
-    })
-    .catch(err => err);
-}
-
-function crawlResourceByType(type: string): Promise<any> {
-  const loadPromises: Promise<any>[] = [];
-  let updatePromises: Promise<any>[] = [];
-
-  return getCrawlingResults(type, { limit: 100 })
-    .then(results => {
-      const loadingIterations = Math.ceil(results.total / 100);
-      updatePromises = updatePromises.concat(results.promises);
-
-      for (let i = 0; i < loadingIterations; i++) {
-        loadPromises.push(
-          getCrawlingResults(type, { limit: 100, offset: 100 * (i + 1) })
-            .then(subResults => {
-              updatePromises = updatePromises.concat(subResults.promises);
+  crawlResourceByType(type: string): Promise<any> {
+    let data: any[] = [];
+    return this.loadFirstResource(type)
+      .then(response => {
+        const loadingIterations = Math.ceil(response.total / 100);
+        data = data.concat(response.results);
+        if (loadingIterations > 1) {
+          return this.loadFollowingResources(type, loadingIterations)
+            .then(data => {
+              data = data.concat(response.results);
+              return data;
             })
-            .catch((err: Error) => err)
-        );
-      }
-
-      return Promise.all(loadPromises)
-        .then(() => Promise.all(updatePromises))
-        .catch((err: Error) => err);
-    })
-    .catch((err: Error) => err);
-}
-
-function crawlAPI(): Promise<any> {
-  const promises: Promise<any>[] = [];
-  const endpoints: string[] = config.endpoints;
-
-  for (let i = 0; i < endpoints.length; i++) {
-    promises.push(crawlResourceByType(endpoints[i]));
+            .catch(err => err);
+        }
+        return data;
+      })
+      .catch(err => err);
   }
 
-  return Promise.all(promises);
+  loadFirstResource(type: string): Promise<any> {
+    return this.marvel.getResource(type, { limit: 100 })
+      .then(response => response.data)
+      .catch((err: Error) => err);
+  }
+
+  loadFollowingResources(type: string, iterations: number): Promise<any> {
+    const promises: Promise<any>[] = [];
+    const data: any[] = [];
+    for (let i = 0; i < iterations; i++) {
+      promises.push(
+        this.marvel.getResource(type, { limit: 100, offset: 100 * (i + 1) })
+          .then(response => data.push(response.data.results))
+          .catch((err: Error) => err)
+      );
+    }
+
+    return Promise.all(promises)
+      .then(() => [].concat(...data))
+      .catch((err: Error) => err);
+  }
+
+  updateDb(type: string, resources: any[]): Promise<any> {
+    const promises: any[] = [];
+
+    for (let i = 0; i < resources.length; i++) {
+      var resource = resources[i];
+      promises.push(this.updateOrInsert(type, resource));
+    }
+
+    return Promise.all(promises);
+  }
+
+  updateOrInsert(type: string, resource: any): Promise<any> {
+    return this.dbManager.getResourceByMarvelId(type, resource)
+      .then(response => {
+        if (response === null) {
+          return this.dbManager.createResource(type, resource);
+        }
+        return this.dbManager.updateResourceById(type, resource);
+      })
+      .catch(err => err);
+  }
+
 }
 
-crawlAPI()
-  .then(() => {
-    closeDB();
-    console.log('updated successfuly database');
-    process.exit();
-  })
-  .catch((err: Error) => {
-    console.error(`Error while updating database: ${err}`);
-    closeDB();
-    process.exit();
-  });
-
+const crawler = new MarvelAPICrawler();
+crawler.start()
+  .then(() => process.exit())
+  .catch(() => process.exit());

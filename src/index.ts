@@ -1,36 +1,37 @@
 'use strict';
 
+import MarvelService from './marvel';
+
 const config = require('./config.json');
 const MongoClient = require('mongodb').MongoClient;
-const MarvelService = require('./marvel.js').MarvelService;
 const ObjectId = require('mongodb').ObjectId;
 
-const dbUrl = config.dbUrl;
-let dbInstace = null;
-const marvel = new MarvelService();
+const dbUrl: string = config.dbUrl;
+let dbInstace: any = null;
+const marvel: MarvelService = new MarvelService();
 
-function connectDB(url) {
+function connectDB(url: string): Promise<any> {
   return MongoClient.connect(url)
-    .then(datab => {
+    .then((datab: IDBDatabase) => {
       dbInstace = datab;
       return dbInstace;
     })
-    .catch(err => `Couldn't connect to databse: ${err}`);
+    .catch((err: Error) => `Couldn't connect to databse: ${err}`);
 }
 
-function closeDB() {
+function closeDB(): Promise<any> {
   if (dbInstace) {
     return dbInstace.close()
       .then(() => {
         dbInstace = null;
       })
-      .catch(err => `Couldn't close databse connection: ${err}`);
+      .catch((err: Error) => `Couldn't close databse connection: ${err}`);
   }
 
   return Promise.reject('Database connection already closed');
 }
 
-function getDB() {
+function getDB(): Promise<any> {
   if (dbInstace) {
     return Promise.resolve(dbInstace);
   }
@@ -38,31 +39,31 @@ function getDB() {
   return connectDB(dbUrl);
 }
 
-function updateResource(type, resource) {
+function updateResource(type: string, resource: any): Promise<any> {
   return getDB()
     .then(db => {
       const resourceCollection = db.collection(type);
       return resourceCollection.find({ marvelId: resource.marvelId }).limit(1)
         .next()
-        .then(result => {
+        .then((result: any) => {
           if (!result) {
             return resourceCollection.insertOne(resource);
           }
           const id = new ObjectId(result._id);
           return resourceCollection.updateOne({ _id: id }, resource);
         })
-        .catch(err => err);
+        .catch((err: Error) => err);
     })
     .catch(err => err);
 }
 
-function getCrawlingResults(type, options) {
+function getCrawlingResults(type: string, options: any): Promise<any> {
   return marvel.getResource(type, options)
     .then(response => {
       const data = response.data;
-      const promises = [];
+      const promises: Promise<any>[] = [];
 
-      data.results.map(resource => {
+      data.results.map((resource: any) => {
         resource.marvelId = resource.id;
         delete resource.id;
         return promises.push(updateResource(type, resource));
@@ -76,9 +77,9 @@ function getCrawlingResults(type, options) {
     .catch(err => err);
 }
 
-function crawlResourceByType(type) {
-  const loadPromises = [];
-  let updatePromises = [];
+function crawlResourceByType(type: string): Promise<any> {
+  const loadPromises: Promise<any>[] = [];
+  let updatePromises: Promise<any>[] = [];
 
   return getCrawlingResults(type, { limit: 100 })
     .then(results => {
@@ -91,20 +92,20 @@ function crawlResourceByType(type) {
             .then(subResults => {
               updatePromises = updatePromises.concat(subResults.promises);
             })
-            .catch(err => err)
+            .catch((err: Error) => err)
         );
       }
 
       return Promise.all(loadPromises)
         .then(() => Promise.all(updatePromises))
-        .catch(err => err);
+        .catch((err: Error) => err);
     })
-    .catch(err => err);
+    .catch((err: Error) => err);
 }
 
-function crawlAPI() {
-  const promises = [];
-  const endpoints = config.endpoints;
+function crawlAPI(): Promise<any> {
+  const promises: Promise<any>[] = [];
+  const endpoints: string[] = config.endpoints;
 
   for (let i = 0; i < endpoints.length; i++) {
     promises.push(crawlResourceByType(endpoints[i]));
@@ -119,7 +120,7 @@ crawlAPI()
     console.log('updated successfuly database');
     process.exit();
   })
-  .catch(err => {
+  .catch((err: Error) => {
     console.error(`Error while updating database: ${err}`);
     closeDB();
     process.exit();

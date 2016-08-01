@@ -4,9 +4,11 @@
   "description": "A node based crawler to retrieve data from Marvel api",
   "main": "src/index.js",
   "scripts": {
+    "build": "tsc",
     "init": "cp src/config.json.example src/config.json",
-    "postinstall": "npm run init",
-    "start": "node src/index.js"
+    "postinstall": "npm run init && build",
+    "start": "node build/index.js",
+    "dev": "npm run build -- -w"
   },
   "repository": {
     "type": "git",
@@ -28,7 +30,8 @@
   "devDependencies": {
     "eslint": "^3.2.0",
     "eslint-config-airbnb-base": "^5.0.1",
-    "eslint-plugin-import": "^1.12.0"
+    "eslint-plugin-import": "^1.12.0",
+    "typescript": "^1.8.10"
   },
   "dependencies": {
     "md5": "^2.1.0",

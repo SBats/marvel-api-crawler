@@ -34,8 +34,8 @@
     "typescript": "^1.8.10"
   },
   "dependencies": {
+    "base-64": "^0.1.0",
     "md5": "^2.1.0",
-    "mongodb": "^2.2.5",
-    "node-fetch": "^1.5.3"
+    "node-fetch": "^1.6.0"
   }
 }

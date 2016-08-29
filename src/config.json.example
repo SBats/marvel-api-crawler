@@ -1,5 +1,7 @@
 {
-  "dbUrl": "mongodb://@localhost:27017/myBase",
+  "dbUrl": "https://my-kinto.herokuapp.com/v1",
+  "bucketName": "mrs",
+  "userSecret": "my-secret",
   "endpoints": [
     "series",
     "comics",

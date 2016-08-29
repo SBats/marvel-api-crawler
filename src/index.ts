@@ -1,40 +1,46 @@
 'use strict';
 
 import MarvelService from './marvel';
-import DBManager from './database';
+import KintoManager from './kinto';
 
 const config = require('./config.json');
 
 class MarvelAPICrawler {
   marvel: MarvelService;
-  dbManager: DBManager;
+  kintoManager: KintoManager;
 
   constructor() {
     this.marvel = new MarvelService();
-    this.dbManager = new DBManager();
+    this.kintoManager = new KintoManager(config.dbUrl, config.bucketName, config.userSecret);
   }
 
   start(): Promise<any> {
-    return this.dbManager.connectDB(config.dbUrl)
+    console.log(`
+      --------------------------
+      Start Crawler
+      --------------------------
+    `);
+    return this.kintoManager.createBucket()
       .then(() => {
-        return this.crawlAPI()
-          .then(() => {
-            console.log('updated successfuly database');
-            this.dbManager.logDBOperations();
-            return this.dbManager.db.close();
-          })
-          .catch((err: Error) => {
-            console.error(`Error while updating database: ${err}`);
-            this.dbManager.logDBOperations();
-            return this.dbManager.db.close();
-          });
+        return this.crawlAPI();
       })
-      .catch(err => err);
+      .then(() => {
+        console.log('updated successfuly database');
+      })
+      .catch((err: Error) => {
+        console.error(`Error while running script: ${err}`);
+      });
   }
 
   crawlAPI(): Promise<any> {
     const promises: Promise<any>[] = [];
     const endpoints: string[] = config.endpoints;
+
+    console.log(`
+      --------------------------
+      Crawling API
+      --------------------------
+    `);
 
     for (let i = 0; i < endpoints.length; i++) {
       promises.push(
@@ -54,6 +60,11 @@ class MarvelAPICrawler {
 
   crawlResourceByType(type: string): Promise<any> {
     let data: any[] = [];
+    console.log(`
+      --------------------------
+      Crawling ressource ${type}
+      --------------------------
+    `);
     return this.loadFirstResource(type)
       .then(response => {
         const loadingIterations = Math.ceil(response.total / 100);
@@ -95,24 +106,25 @@ class MarvelAPICrawler {
 
   updateDb(type: string, resources: any[]): Promise<any> {
     const promises: any[] = [];
+    console.log(`
+      --------------------------
+      Update ${type} collection
+      --------------------------
+    `);
 
-    for (let i = 0; i < resources.length; i++) {
-      var resource = resources[i];
-      promises.push(this.updateOrInsert(type, resource));
-    }
-
-    return Promise.all(promises);
-  }
-
-  updateOrInsert(type: string, resource: any): Promise<any> {
-    return this.dbManager.getResourceByMarvelId(type, resource)
-      .then(response => {
-        if (response === null) {
-          return this.dbManager.createResource(type, resource);
+    return this.kintoManager.createCollection(type)
+      .then(() => {
+        for (let i = 0; i < resources.length; i++) {
+          var resource = Object.assign({}, resources[i]);
+          resource.id = `marvel-${type}-${resource.id}`;
+          promises.push(this.kintoManager.createRecord(type, resource));
         }
-        return this.dbManager.updateResourceById(type, resource);
+
+        return Promise.all(promises);
       })
-      .catch(err => err);
+      .catch((err: Error) => {
+        console.error(err);
+      });
   }
 
 }

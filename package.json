@@ -7,7 +7,7 @@
     "build": "tsc",
     "dev": "npm run build -- -w",
     "init": "cp src/config.json.example build/config.json",
-    "postinstall": "npm run init && build",
+    "postinstall": "npm run init && npm run build",
     "start": "node build/index.js"
   },
   "repository": {

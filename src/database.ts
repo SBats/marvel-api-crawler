@@ -43,7 +43,7 @@ export default class DBManager {
   getResourceByMarvelId(collectionName:string, resource: any): Promise<any> {
     const resourceCollection = this.db.collection(collectionName);
     this.updateOperations('read', collectionName);
-    return resourceCollection.find({ marvelId: resource.marvelId }).limit(1).next();
+    return resourceCollection.find({ marvelId: resource.id }).limit(1).next();
   }
 
   updateResourceById(collectionName: string, resource: any): Promise<any> {
